@@ -77,36 +77,15 @@
 </div>
 
 <script>
-const TURSO_URL = "https://YOUR_TURSO_URL";
-const TURSO_TOKEN = "YOUR_TURSO_TOKEN";
-
-async function turso(sql, args = []) {
-  const res = await fetch(TURSO_URL + "/v2/pipeline", {
+async function runQuery(sql, args = []) {
+  const res = await fetch("/api/query", {
     method: "POST",
-    headers: {
-      "Authorization": "Bearer " + TURSO_TOKEN,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      requests: [
-        { type: "execute", stmt: { sql, args: args.map(a => ({ type: "text", value: String(a) })) } },
-        { type: "close" }
-      ]
-    })
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sql, args })
   });
   const data = await res.json();
-  if (data.results && data.results[0] && data.results[0].response) {
-    const r = data.results[0].response;
-    if (r.type === "error") throw new Error(r.message);
-    if (r.result && r.result.rows) {
-      return r.result.rows.map(row => {
-        const obj = {};
-        r.result.cols.forEach((col, i) => { obj[col.name] = row[i]?.value ?? ""; });
-        return obj;
-      });
-    }
-  }
-  return [];
+  if (!res.ok) throw new Error(data.error || "Query failed");
+  return data.rows || [];
 }
 
 // Check saved login
@@ -119,7 +98,7 @@ async function doLogin() {
   const p = document.getElementById("p").value;
   if (!u || !p) { err.textContent = "Fill in all fields"; err.classList.add("show"); return; }
   try {
-    const rows = await turso("SELECT id, username FROM users WHERE username = ? AND password = ?", [u, p]);
+    const rows = await runQuery("SELECT id, username FROM users WHERE username = ? AND password = ?", [u, p]);
     if (rows.length === 0) { err.textContent = "Invalid username or password"; err.classList.add("show"); return; }
     localStorage.setItem("portal_user", JSON.stringify(rows[0]));
     showAdmin();
@@ -144,7 +123,7 @@ function logout() {
 async function loadRecords() {
   const list = document.getElementById("list");
   try {
-    const rows = await turso("SELECT * FROM dalail ORDER BY id DESC");
+    const rows = await runQuery("SELECT * FROM dalail ORDER BY id DESC");
     if (rows.length === 0) { list.innerHTML = '<p class="empty">No records</p>'; return; }
     list.innerHTML = rows.map(r =>
       '<div class="ri"><div><div class="t">' + esc(r.title) + '</div><span class="c">' + esc(r.category) + '</span></div><button onclick="delRecord(' + r.id + ')">Delete</button></div>'
@@ -162,7 +141,7 @@ async function addRecord() {
   const category = document.getElementById("fCat").value.trim();
   if (!title || !category) { err.textContent = "Title and category required"; err.classList.add("show"); return; }
   try {
-    await turso("INSERT INTO dalail (title, category, content_english, content_arabic, content_urdu) VALUES (?, ?, ?, ?, ?)", [
+    await runQuery("INSERT INTO dalail (title, category, content_english, content_arabic, content_urdu) VALUES (?, ?, ?, ?, ?)", [
       title, category,
       document.getElementById("fEn").value.trim(),
       document.getElementById("fAr").value.trim(),
@@ -183,7 +162,7 @@ async function addRecord() {
 async function delRecord(id) {
   if (!confirm("Delete this record?")) return;
   try {
-    await turso("DELETE FROM dalail WHERE id = ?", [id]);
+    await runQuery("DELETE FROM dalail WHERE id = ?", [id]);
     loadRecords();
   } catch (e) {
     alert(e.message);
