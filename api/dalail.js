@@ -1,12 +1,6 @@
 import { verifyAuth } from "./lib/auth.js";
 import { getTurso } from "./lib/turso.js";
 
-async function readBody(req) {
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  return JSON.parse(Buffer.concat(chunks).toString());
-}
-
 export default async function handler(req, res) {
   const user = await verifyAuth(req);
   if (!user) {
@@ -28,19 +22,12 @@ export default async function handler(req, res) {
       }));
       return res.status(200).json({ records });
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to fetch";
-      return res.status(500).json({ error: msg });
+      return res.status(500).json({ error: error.message || "Failed to fetch" });
     }
   }
 
   if (req.method === "POST") {
-    let title, category, content_english, content_arabic, content_urdu;
-    try {
-      const body = await readBody(req);
-      ({ title, category, content_english, content_arabic, content_urdu } = body);
-    } catch {
-      return res.status(400).json({ error: "Invalid body" });
-    }
+    const { title, category, content_english, content_arabic, content_urdu } = req.body || {};
     if (!title || !category) {
       return res.status(400).json({ error: "Title and category required" });
     }
@@ -51,8 +38,7 @@ export default async function handler(req, res) {
       });
       return res.status(201).json({ success: true });
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to add";
-      return res.status(500).json({ error: msg });
+      return res.status(500).json({ error: error.message || "Failed to add" });
     }
   }
 
@@ -65,8 +51,7 @@ export default async function handler(req, res) {
       await db.execute({ sql: "DELETE FROM dalail WHERE id = ?", args: [Number(id)] });
       return res.status(200).json({ success: true });
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to delete";
-      return res.status(500).json({ error: msg });
+      return res.status(500).json({ error: error.message || "Failed to delete" });
     }
   }
 

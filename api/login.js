@@ -1,32 +1,15 @@
 import { getTurso } from "./lib/turso.js";
+import { randomBytes } from "crypto";
 
-export const runtime = "edge";
-
-export default async function handler(request) {
-  if (request.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { "Content-Type": "application/json" },
-    });
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  let username, password;
-  try {
-    const body = await request.json();
-    username = body.username;
-    password = body.password;
-  } catch (e) {
-    return new Response(JSON.stringify({ error: "Parse error: " + e.message }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const { username, password } = req.body || {};
 
   if (!username || !password) {
-    return new Response(JSON.stringify({ error: "Missing username or password" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return res.status(400).json({ error: "Missing username or password" });
   }
 
   try {
@@ -37,32 +20,22 @@ export default async function handler(request) {
     });
 
     if (result.rows.length === 0) {
-      return new Response(JSON.stringify({ error: "Invalid username or password" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
+      return res.status(401).json({ error: "Invalid username or password" });
     }
 
     const user = result.rows[0];
-    const token = crypto.randomUUID();
+    const token = randomBytes(32).toString("hex");
 
     await db.execute({
       sql: "INSERT INTO sessions (user_id, token) VALUES (?, ?)",
       args: [Number(user.id), token],
     });
 
-    return new Response(JSON.stringify({
+    return res.status(200).json({
       token,
       user: { id: Number(user.id), username: String(user.username) },
-    }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Login failed";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return res.status(500).json({ error: error.message || "Login failed" });
   }
 }
