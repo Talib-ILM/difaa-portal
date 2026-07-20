@@ -1,5 +1,5 @@
-import { getTurso } from "./_lib/turso.js";
-import { verifyAuth } from "./_lib/auth.js";
+import { getTurso } from "./lib/turso.js";
+import { verifyAuth } from "./lib/auth.js";
 
 export default async function handler(req, res) {
   const user = await verifyAuth(req);

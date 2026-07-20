@@ -1,4 +1,4 @@
-import { getTurso } from "./_lib/turso.js";
+import { getTurso } from "./lib/turso.js";
 import { randomBytes } from "crypto";
 
 export default async function handler(req, res) {
