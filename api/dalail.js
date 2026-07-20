@@ -1,5 +1,5 @@
-import { verifyAuth } from "../lib/auth.js";
-import { getTurso } from "../lib/turso.js";
+import { verifyAuth } from "./lib/auth.js";
+import { getTurso } from "./lib/turso.js";
 
 export const config = { runtime: "edge" };
 
