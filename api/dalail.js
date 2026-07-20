@@ -1,15 +1,18 @@
-import { getTurso } from "./lib/turso.js";
-import { verifyAuth } from "./lib/auth.js";
+import { verifyAuth } from "../lib/auth.js";
+import { getTurso } from "../lib/turso.js";
 
-export default async function handler(req, res) {
-  const user = await verifyAuth(req);
+export const config = { runtime: "edge" };
+
+export default async function handler(request) {
+  const user = await verifyAuth(request);
   if (!user) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 
   const db = getTurso();
+  const url = new URL(request.url);
 
-  if (req.method === "GET") {
+  if (request.method === "GET") {
     try {
       const result = await db.execute("SELECT * FROM dalail ORDER BY id DESC");
       const records = result.rows.map((row) => ({
@@ -20,43 +23,53 @@ export default async function handler(req, res) {
         content_urdu: String(row.content_urdu ?? ""),
         content_arabic: String(row.content_arabic ?? ""),
       }));
-      return res.status(200).json({ records });
+      return new Response(JSON.stringify({ records }), { status: 200, headers: { "Content-Type": "application/json" } });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to fetch";
-      return res.status(500).json({ error: msg });
+      return new Response(JSON.stringify({ error: msg }), { status: 500 });
     }
   }
 
-  if (req.method === "POST") {
-    const { title, category, content_english, content_arabic, content_urdu } = req.body || {};
+  if (request.method === "POST") {
+    let title, category, content_english, content_arabic, content_urdu;
+    try {
+      const body = await request.json();
+      title = body.title;
+      category = body.category;
+      content_english = body.content_english;
+      content_arabic = body.content_arabic;
+      content_urdu = body.content_urdu;
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid body" }), { status: 400 });
+    }
     if (!title || !category) {
-      return res.status(400).json({ error: "Title and category are required" });
+      return new Response(JSON.stringify({ error: "Title and category required" }), { status: 400 });
     }
     try {
       await db.execute({
         sql: "INSERT INTO dalail (title, category, content_english, content_arabic, content_urdu) VALUES (?, ?, ?, ?, ?)",
         args: [title, category, content_english || "", content_arabic || "", content_urdu || ""],
       });
-      return res.status(201).json({ success: true });
+      return new Response(JSON.stringify({ success: true }), { status: 201, headers: { "Content-Type": "application/json" } });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to add";
-      return res.status(500).json({ error: msg });
+      return new Response(JSON.stringify({ error: msg }), { status: 500 });
     }
   }
 
-  if (req.method === "DELETE") {
-    const id = req.query?.id;
+  if (request.method === "DELETE") {
+    const id = url.searchParams.get("id");
     if (!id) {
-      return res.status(400).json({ error: "ID required" });
+      return new Response(JSON.stringify({ error: "ID required" }), { status: 400 });
     }
     try {
       await db.execute({ sql: "DELETE FROM dalail WHERE id = ?", args: [Number(id)] });
-      return res.status(200).json({ success: true });
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to delete";
-      return res.status(500).json({ error: msg });
+      return new Response(JSON.stringify({ error: msg }), { status: 500 });
     }
   }
 
-  return res.status(405).json({ error: "Method not allowed" });
+  return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
 }

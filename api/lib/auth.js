@@ -1,7 +1,7 @@
-import { getTurso } from "./turso.js";
+import { getTurso } from "../lib/turso.js";
 
-export async function verifyAuth(req) {
-  const auth = req.headers.authorization;
+export async function verifyAuth(request) {
+  const auth = request.headers.get("authorization");
   if (!auth || !auth.startsWith("Bearer ")) return null;
   const token = auth.slice(7);
   const db = getTurso();
