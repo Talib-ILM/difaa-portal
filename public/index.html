@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Difaa-e-Deoband Portal</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="card">
+    <img src="/logo.png" alt="Logo" class="logo" onerror="this.style.display='none'">
+    <h1>Portal Login</h1>
+    <p class="subtitle">Difaa-e-Deoband Admin</p>
+    <div id="error" class="error"></div>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary">Sign In</button>
+    </form>
+  </div>
+  <script>
+    if (localStorage.getItem('portal_token')) {
+      window.location.href = '/admin.html';
+    }
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById('error');
+      errEl.classList.remove('show');
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errEl.textContent = data.error || 'Login failed';
+          errEl.classList.add('show');
+          return;
+        }
+        localStorage.setItem('portal_token', data.token);
+        localStorage.setItem('portal_user', JSON.stringify(data.user));
+        window.location.href = '/admin.html';
+      } catch {
+        errEl.textContent = 'Network error';
+        errEl.classList.add('show');
+      }
+    });
+  </script>
+</body>
+</html>
