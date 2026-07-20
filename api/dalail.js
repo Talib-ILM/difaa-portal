@@ -1,6 +1,17 @@
 import { getTurso } from "./_lib/turso.js";
 import { verifyAuth } from "./_lib/auth.js";
 
+function readBody(req) {
+  return new Promise((resolve) => {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+      try { resolve(JSON.parse(body)); }
+      catch { resolve({}); }
+    });
+  });
+}
+
 export default async function handler(req, res) {
   const user = await verifyAuth(req);
   if (!user) {
@@ -30,7 +41,7 @@ export default async function handler(req, res) {
 
   // POST - add a record
   if (req.method === "POST") {
-    const { title, category, content_english, content_arabic, content_urdu } = req.body || {};
+    const { title, category, content_english, content_arabic, content_urdu } = await readBody(req);
     if (!title || !category) {
       return res.status(400).json({ error: "Title and category are required" });
     }
