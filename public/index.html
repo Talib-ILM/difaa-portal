@@ -3,57 +3,197 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Difaa-e-Deoband Portal</title>
-  <link rel="stylesheet" href="/style.css">
+  <title>Difaa Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--p:#4CAF50;--bg:#FDFCF8;--sf:#F1F8E9;--tx:#2C2C2C;--ts:#6B6B6B;--bd:#E0DDD4;--r:#E53935}
+    @media(prefers-color-scheme:dark){:root{--p:#66BB6A;--bg:#1A1A1A;--sf:#1E2A1E;--tx:#F0EDE6;--ts:#B0ADA4;--bd:#2E3A2E}}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Playfair Display',serif;background:var(--bg);color:var(--tx);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+    .card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:40px;width:100%;max-width:500px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+    h1{font-size:1.8rem;text-align:center;margin-bottom:4px}
+    .sub{text-align:center;color:var(--ts);font-size:.85rem;margin-bottom:28px}
+    .fg{margin-bottom:16px}
+    label{display:block;font-size:.85rem;font-weight:600;margin-bottom:4px;color:var(--ts)}
+    input,textarea,select{width:100%;padding:10px 14px;border:1px solid var(--bd);border-radius:8px;font-family:'Playfair Display',serif;font-size:.95rem;background:var(--bg);color:var(--tx);outline:none}
+    input:focus,textarea:focus{border-color:var(--p)}
+    textarea{min-height:80px;resize:vertical}
+    .btn{width:100%;padding:12px;border:none;border-radius:12px;font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;cursor:pointer;transition:transform .15s}
+    .btn:active{transform:scale(.98)}
+    .btn-g{background:var(--p);color:#fff;box-shadow:0 4px 12px rgba(76,175,80,.3)}
+    .btn-r{background:var(--r);color:#fff;margin-top:8px}
+    .btn-o{background:transparent;color:var(--ts);border:1px solid var(--bd);margin-top:12px}
+    .err{background:#FFEBEE;color:var(--r);padding:8px 12px;border-radius:8px;font-size:.85rem;margin-bottom:12px;display:none}
+    .err.show{display:block}
+    .ok{background:#E8F5E9;color:#2E7D32;padding:8px 12px;border-radius:8px;font-size:.85rem;margin-bottom:12px;display:none}
+    .ok.show{display:block}
+    .hidden{display:none !important}
+    .ri{display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:12px 16px;margin-bottom:8px}
+    .ri .t{font-weight:600;font-size:.9rem}
+    .ri .c{font-size:.7rem;color:var(--p);background:rgba(76,175,80,.1);padding:2px 8px;border-radius:999px;display:inline-block;margin-top:2px}
+    .ri button{background:var(--r);color:#fff;border:none;padding:6px 12px;border-radius:8px;font-family:'Playfair Display',serif;font-size:.75rem;cursor:pointer}
+    .empty{text-align:center;color:var(--ts);padding:24px;font-size:.9rem}
+    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:8px}
+    .top h2{font-size:1.2rem}
+    hr{border:none;border-top:1px solid var(--bd);margin:24px 0}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .row .fg{flex:1;min-width:120px}
+  </style>
 </head>
 <body>
-  <div class="card">
-    <img src="/logo.png" alt="Logo" class="logo" onerror="this.style.display='none'">
-    <h1>Portal Login</h1>
-    <p class="subtitle">Difaa-e-Deoband Admin</p>
-    <div id="error" class="error"></div>
-    <form id="loginForm">
-      <div class="form-group">
-        <label for="username">Username</label>
-        <input type="text" id="username" required autocomplete="username">
-      </div>
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" required autocomplete="current-password">
-      </div>
-      <button type="submit" class="btn btn-primary">Sign In</button>
-    </form>
+
+<!-- LOGIN -->
+<div id="loginCard" class="card">
+  <h1>Portal Login</h1>
+  <p class="sub">Difaa-e-Deoband Admin</p>
+  <div id="loginErr" class="err"></div>
+  <div class="fg"><label>Username</label><input id="u" autocomplete="username"></div>
+  <div class="fg"><label>Password</label><input id="p" type="password" autocomplete="current-password"></div>
+  <button class="btn btn-g" onclick="doLogin()">Sign In</button>
+</div>
+
+<!-- ADMIN -->
+<div id="adminCard" class="card hidden" style="max-width:600px;max-height:90vh;overflow-y:auto">
+  <div class="top">
+    <h2>Dashboard</h2>
+    <button class="btn-o" style="width:auto;padding:6px 14px" onclick="logout()">Sign Out</button>
   </div>
-  <script>
-    if (localStorage.getItem('portal_token')) {
-      window.location.href = '/admin.html';
+  <div id="adminErr" class="err"></div>
+  <div id="adminOk" class="ok"></div>
+
+  <h3 style="font-size:1.1rem;margin-bottom:12px">Add New Dalail</h3>
+  <div class="row">
+    <div class="fg"><label>Title</label><input id="fTitle"></div>
+    <div class="fg"><label>Category</label><input id="fCat" placeholder="e.g. Fiqh"></div>
+  </div>
+  <div class="fg"><label>Content (English)</label><textarea id="fEn"></textarea></div>
+  <div class="fg"><label>Content (Arabic)</label><textarea id="fAr" dir="rtl"></textarea></div>
+  <div class="fg"><label>Content (Urdu)</label><textarea id="fUr" dir="rtl"></textarea></div>
+  <button class="btn btn-g" onclick="addRecord()">Add Record</button>
+
+  <hr>
+  <h3 style="font-size:1.1rem;margin-bottom:12px">Existing Records</h3>
+  <div id="list"><p class="empty">Loading...</p></div>
+</div>
+
+<script>
+const TURSO_URL = "https://YOUR_TURSO_URL";
+const TURSO_TOKEN = "YOUR_TURSO_TOKEN";
+
+async function turso(sql, args = []) {
+  const res = await fetch(TURSO_URL + "/v2/pipeline", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + TURSO_TOKEN,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      requests: [
+        { type: "execute", stmt: { sql, args: args.map(a => ({ type: "text", value: String(a) })) } },
+        { type: "close" }
+      ]
+    })
+  });
+  const data = await res.json();
+  if (data.results && data.results[0] && data.results[0].response) {
+    const r = data.results[0].response;
+    if (r.type === "error") throw new Error(r.message);
+    if (r.result && r.result.rows) {
+      return r.result.rows.map(row => {
+        const obj = {};
+        r.result.cols.forEach((col, i) => { obj[col.name] = row[i]?.value ?? ""; });
+        return obj;
+      });
     }
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const errEl = document.getElementById('error');
-      errEl.classList.remove('show');
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value;
-      try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          errEl.textContent = data.error || 'Login failed';
-          errEl.classList.add('show');
-          return;
-        }
-        localStorage.setItem('portal_token', data.token);
-        localStorage.setItem('portal_user', JSON.stringify(data.user));
-        window.location.href = '/admin.html';
-      } catch {
-        errEl.textContent = 'Network error';
-        errEl.classList.add('show');
-      }
-    });
-  </script>
+  }
+  return [];
+}
+
+// Check saved login
+if (localStorage.getItem("portal_user")) showAdmin();
+
+async function doLogin() {
+  const err = document.getElementById("loginErr");
+  err.classList.remove("show");
+  const u = document.getElementById("u").value.trim();
+  const p = document.getElementById("p").value;
+  if (!u || !p) { err.textContent = "Fill in all fields"; err.classList.add("show"); return; }
+  try {
+    const rows = await turso("SELECT id, username FROM users WHERE username = ? AND password = ?", [u, p]);
+    if (rows.length === 0) { err.textContent = "Invalid username or password"; err.classList.add("show"); return; }
+    localStorage.setItem("portal_user", JSON.stringify(rows[0]));
+    showAdmin();
+  } catch (e) {
+    err.textContent = e.message; err.classList.add("show");
+  }
+}
+
+function showAdmin() {
+  document.getElementById("loginCard").classList.add("hidden");
+  document.getElementById("adminCard").classList.remove("hidden");
+  document.body.style.justifyContent = "flex-start";
+  document.body.style.paddingTop = "16px";
+  loadRecords();
+}
+
+function logout() {
+  localStorage.removeItem("portal_user");
+  location.reload();
+}
+
+async function loadRecords() {
+  const list = document.getElementById("list");
+  try {
+    const rows = await turso("SELECT * FROM dalail ORDER BY id DESC");
+    if (rows.length === 0) { list.innerHTML = '<p class="empty">No records</p>'; return; }
+    list.innerHTML = rows.map(r =>
+      '<div class="ri"><div><div class="t">' + esc(r.title) + '</div><span class="c">' + esc(r.category) + '</span></div><button onclick="delRecord(' + r.id + ')">Delete</button></div>'
+    ).join("");
+  } catch (e) {
+    list.innerHTML = '<p class="empty">' + esc(e.message) + '</p>';
+  }
+}
+
+async function addRecord() {
+  const err = document.getElementById("adminErr");
+  const ok = document.getElementById("adminOk");
+  err.classList.remove("show"); ok.classList.remove("show");
+  const title = document.getElementById("fTitle").value.trim();
+  const category = document.getElementById("fCat").value.trim();
+  if (!title || !category) { err.textContent = "Title and category required"; err.classList.add("show"); return; }
+  try {
+    await turso("INSERT INTO dalail (title, category, content_english, content_arabic, content_urdu) VALUES (?, ?, ?, ?, ?)", [
+      title, category,
+      document.getElementById("fEn").value.trim(),
+      document.getElementById("fAr").value.trim(),
+      document.getElementById("fUr").value.trim()
+    ]);
+    ok.textContent = "Record added!"; ok.classList.add("show");
+    document.getElementById("fTitle").value = "";
+    document.getElementById("fCat").value = "";
+    document.getElementById("fEn").value = "";
+    document.getElementById("fAr").value = "";
+    document.getElementById("fUr").value = "";
+    loadRecords();
+  } catch (e) {
+    err.textContent = e.message; err.classList.add("show");
+  }
+}
+
+async function delRecord(id) {
+  if (!confirm("Delete this record?")) return;
+  try {
+    await turso("DELETE FROM dalail WHERE id = ?", [id]);
+    loadRecords();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+
+// Enter key login
+document.getElementById("p").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+</script>
 </body>
 </html>
