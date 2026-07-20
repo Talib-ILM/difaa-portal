@@ -1,23 +1,32 @@
 import { getTurso } from "./lib/turso.js";
-import { randomBytes } from "crypto";
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+export const runtime = "edge";
+
+export default async function handler(request) {
+  if (request.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
-  let body;
+  let username, password;
   try {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    body = JSON.parse(Buffer.concat(chunks).toString());
+    const body = await request.json();
+    username = body.username;
+    password = body.password;
   } catch (e) {
-    return res.status(400).json({ error: "Parse failed: " + e.message });
+    return new Response(JSON.stringify({ error: "Parse error: " + e.message }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
-  const { username, password } = body || {};
   if (!username || !password) {
-    return res.status(400).json({ error: "Missing fields", got: Object.keys(body || {}) });
+    return new Response(JSON.stringify({ error: "Missing username or password" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -28,23 +37,32 @@ export default async function handler(req, res) {
     });
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: "Invalid username or password" });
+      return new Response(JSON.stringify({ error: "Invalid username or password" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const user = result.rows[0];
-    const token = randomBytes(32).toString("hex");
+    const token = crypto.randomUUID();
 
     await db.execute({
       sql: "INSERT INTO sessions (user_id, token) VALUES (?, ?)",
       args: [Number(user.id), token],
     });
 
-    return res.status(200).json({
+    return new Response(JSON.stringify({
       token,
       user: { id: Number(user.id), username: String(user.username) },
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Login failed";
-    return res.status(500).json({ error: msg });
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
