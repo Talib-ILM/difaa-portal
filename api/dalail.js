@@ -1,18 +1,21 @@
 import { verifyAuth } from "./lib/auth.js";
 import { getTurso } from "./lib/turso.js";
 
-export const config = { runtime: "edge" };
+async function readBody(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  return JSON.parse(Buffer.concat(chunks).toString());
+}
 
-export default async function handler(request) {
-  const user = await verifyAuth(request);
+export default async function handler(req, res) {
+  const user = await verifyAuth(req);
   if (!user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   const db = getTurso();
-  const url = new URL(request.url);
 
-  if (request.method === "GET") {
+  if (req.method === "GET") {
     try {
       const result = await db.execute("SELECT * FROM dalail ORDER BY id DESC");
       const records = result.rows.map((row) => ({
@@ -23,53 +26,49 @@ export default async function handler(request) {
         content_urdu: String(row.content_urdu ?? ""),
         content_arabic: String(row.content_arabic ?? ""),
       }));
-      return new Response(JSON.stringify({ records }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return res.status(200).json({ records });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to fetch";
-      return new Response(JSON.stringify({ error: msg }), { status: 500 });
+      return res.status(500).json({ error: msg });
     }
   }
 
-  if (request.method === "POST") {
+  if (req.method === "POST") {
     let title, category, content_english, content_arabic, content_urdu;
     try {
-      const body = await request.json();
-      title = body.title;
-      category = body.category;
-      content_english = body.content_english;
-      content_arabic = body.content_arabic;
-      content_urdu = body.content_urdu;
+      const body = await readBody(req);
+      ({ title, category, content_english, content_arabic, content_urdu } = body);
     } catch {
-      return new Response(JSON.stringify({ error: "Invalid body" }), { status: 400 });
+      return res.status(400).json({ error: "Invalid body" });
     }
     if (!title || !category) {
-      return new Response(JSON.stringify({ error: "Title and category required" }), { status: 400 });
+      return res.status(400).json({ error: "Title and category required" });
     }
     try {
       await db.execute({
         sql: "INSERT INTO dalail (title, category, content_english, content_arabic, content_urdu) VALUES (?, ?, ?, ?, ?)",
         args: [title, category, content_english || "", content_arabic || "", content_urdu || ""],
       });
-      return new Response(JSON.stringify({ success: true }), { status: 201, headers: { "Content-Type": "application/json" } });
+      return res.status(201).json({ success: true });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to add";
-      return new Response(JSON.stringify({ error: msg }), { status: 500 });
+      return res.status(500).json({ error: msg });
     }
   }
 
-  if (request.method === "DELETE") {
-    const id = url.searchParams.get("id");
+  if (req.method === "DELETE") {
+    const id = req.query?.id;
     if (!id) {
-      return new Response(JSON.stringify({ error: "ID required" }), { status: 400 });
+      return res.status(400).json({ error: "ID required" });
     }
     try {
       await db.execute({ sql: "DELETE FROM dalail WHERE id = ?", args: [Number(id)] });
-      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return res.status(200).json({ success: true });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to delete";
-      return new Response(JSON.stringify({ error: msg }), { status: 500 });
+      return res.status(500).json({ error: msg });
     }
   }
 
-  return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
+  return res.status(405).json({ error: "Method not allowed" });
 }
