@@ -1,16 +1,7 @@
 import { getTurso } from "./_lib/turso.js";
 import { verifyAuth } from "./_lib/auth.js";
 
-function readBody(req) {
-  return new Promise((resolve) => {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", () => {
-      try { resolve(JSON.parse(body)); }
-      catch { resolve({}); }
-    });
-  });
-}
+export const config = { api: { bodyParser: false } };
 
 export default async function handler(req, res) {
   const user = await verifyAuth(req);
@@ -41,7 +32,18 @@ export default async function handler(req, res) {
 
   // POST - add a record
   if (req.method === "POST") {
-    const { title, category, content_english, content_arabic, content_urdu } = await readBody(req);
+    let title, category, content_english, content_arabic, content_urdu;
+    try {
+      const text = await req.text();
+      const body = JSON.parse(text);
+      title = body.title;
+      category = body.category;
+      content_english = body.content_english;
+      content_arabic = body.content_arabic;
+      content_urdu = body.content_urdu;
+    } catch {
+      return res.status(400).json({ error: "Invalid request body" });
+    }
     if (!title || !category) {
       return res.status(400).json({ error: "Title and category are required" });
     }

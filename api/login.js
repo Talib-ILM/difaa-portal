@@ -1,23 +1,22 @@
 import { getTurso } from "./_lib/turso.js";
 import { randomBytes } from "crypto";
 
-function readBody(req) {
-  return new Promise((resolve) => {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", () => {
-      try { resolve(JSON.parse(body)); }
-      catch { resolve({}); }
-    });
-  });
-}
+export const config = { api: { bodyParser: false } };
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { username, password } = await readBody(req);
+  let username, password;
+  try {
+    const text = await req.text();
+    const body = JSON.parse(text);
+    username = body.username;
+    password = body.password;
+  } catch {
+    return res.status(400).json({ error: "Invalid request body" });
+  }
   if (!username || !password) {
     return res.status(400).json({ error: "Username and password required" });
   }
