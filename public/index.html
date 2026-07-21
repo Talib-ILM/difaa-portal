@@ -31,7 +31,10 @@
     .ri{display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:12px 16px;margin-bottom:8px}
     .ri .t{font-weight:600;font-size:.9rem}
     .ri .c{font-size:.7rem;color:var(--p);background:rgba(76,175,80,.1);padding:2px 8px;border-radius:999px;display:inline-block;margin-top:2px}
-    .ri button{background:var(--r);color:#fff;border:none;padding:6px 12px;border-radius:8px;font-family:'Playfair Display',serif;font-size:.75rem;cursor:pointer}
+    .ri .btns{display:flex;gap:6px}
+    .ri button{color:#fff;border:none;padding:6px 12px;border-radius:8px;font-family:'Playfair Display',serif;font-size:.75rem;cursor:pointer}
+    .btn-edit{background:var(--p)}
+    .btn-del{background:var(--r)}
     .empty{text-align:center;color:var(--ts);padding:24px;font-size:.9rem}
     .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:8px}
     .top h2{font-size:1.2rem}
@@ -61,7 +64,7 @@
   <div id="adminErr" class="err"></div>
   <div id="adminOk" class="ok"></div>
 
-  <h3 style="font-size:1.1rem;margin-bottom:12px">Add New Dalail</h3>
+  <h3 id="addTitle" style="font-size:1.1rem;margin-bottom:12px">Add New Dalail</h3>
   <div class="row">
     <div class="fg"><label>Title</label><input id="fTitle"></div>
     <div class="fg"><label>Category</label><input id="fCat" placeholder="e.g. Fiqh"></div>
@@ -69,7 +72,8 @@
   <div class="fg"><label>Content (English)</label><textarea id="fEn"></textarea></div>
   <div class="fg"><label>Content (Arabic)</label><textarea id="fAr" dir="rtl"></textarea></div>
   <div class="fg"><label>Content (Urdu)</label><textarea id="fUr" dir="rtl"></textarea></div>
-  <button class="btn btn-g" onclick="addRecord()">Add Record</button>
+  <button class="btn btn-g" id="addBtn" onclick="addRecord()">Add Record</button>
+  <button class="btn btn-o hidden" id="cancelEdit" onclick="cancelEditFn()">Cancel Edit</button>
 
   <hr>
   <h3 style="font-size:1.1rem;margin-bottom:12px">Existing Records</h3>
@@ -126,7 +130,7 @@ async function loadRecords() {
     const rows = await runQuery("SELECT * FROM dalail ORDER BY id DESC");
     if (rows.length === 0) { list.innerHTML = '<p class="empty">No records</p>'; return; }
     list.innerHTML = rows.map(r =>
-      '<div class="ri"><div><div class="t">' + esc(r.title) + '</div><span class="c">' + esc(r.category) + '</span></div><button onclick="delRecord(' + r.id + ')">Delete</button></div>'
+      '<div class="ri"><div><div class="t">' + esc(r.title) + '</div><span class="c">' + esc(r.category) + '</span></div><div class="btns"><button class="btn-edit" onclick=\'editRecord(' + JSON.stringify(r).replace(/'/g, "&#39;") + ')\'>Edit</button><button class="btn-del" onclick="delRecord(' + r.id + ')">Delete</button></div></div>'
     ).join("");
   } catch (e) {
     list.innerHTML = '<p class="empty">' + esc(e.message) + '</p>';
@@ -170,6 +174,58 @@ async function delRecord(id) {
 }
 
 function esc(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+
+let editingId = null;
+
+function editRecord(r) {
+  editingId = r.id;
+  document.getElementById("fTitle").value = r.title || "";
+  document.getElementById("fCat").value = r.category || "";
+  document.getElementById("fEn").value = r.content_english || "";
+  document.getElementById("fAr").value = r.content_arabic || "";
+  document.getElementById("fUr").value = r.content_urdu || "";
+  document.getElementById("addBtn").textContent = "Save Changes";
+  document.getElementById("addBtn").onclick = saveEdit;
+  document.getElementById("cancelEdit").classList.remove("hidden");
+  document.getElementById("addTitle").textContent = "Edit Record";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function cancelEditFn() {
+  editingId = null;
+  document.getElementById("fTitle").value = "";
+  document.getElementById("fCat").value = "";
+  document.getElementById("fEn").value = "";
+  document.getElementById("fAr").value = "";
+  document.getElementById("fUr").value = "";
+  document.getElementById("addBtn").textContent = "Add Record";
+  document.getElementById("addBtn").onclick = addRecord;
+  document.getElementById("cancelEdit").classList.add("hidden");
+  document.getElementById("addTitle").textContent = "Add New Dalail";
+}
+
+async function saveEdit() {
+  const err = document.getElementById("adminErr");
+  const ok = document.getElementById("adminOk");
+  err.classList.remove("show"); ok.classList.remove("show");
+  const title = document.getElementById("fTitle").value.trim();
+  const category = document.getElementById("fCat").value.trim();
+  if (!title || !category) { err.textContent = "Title and category required"; err.classList.add("show"); return; }
+  try {
+    await runQuery("UPDATE dalail SET title = ?, category = ?, content_english = ?, content_arabic = ?, content_urdu = ? WHERE id = ?", [
+      title, category,
+      document.getElementById("fEn").value.trim(),
+      document.getElementById("fAr").value.trim(),
+      document.getElementById("fUr").value.trim(),
+      editingId
+    ]);
+    ok.textContent = "Record updated!"; ok.classList.add("show");
+    cancelEditFn();
+    loadRecords();
+  } catch (e) {
+    err.textContent = e.message; err.classList.add("show");
+  }
+}
 
 // Enter key login
 document.getElementById("p").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
