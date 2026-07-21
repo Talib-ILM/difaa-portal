@@ -1,4 +1,4 @@
-import { connect } from "@tursodatabase/serverless";
+import { createClient } from "@libsql/client";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const db = connect({
+    const db = createClient({
       url: process.env.TURSO_DATABASE_URL,
       authToken: process.env.TURSO_AUTH_TOKEN,
     });
@@ -21,7 +21,9 @@ export default async function handler(req, res) {
     });
     const rows = result.rows.map(row => {
       const obj = {};
-      result.columns.forEach((col, i) => { obj[col] = row[i] ?? ""; });
+      for (const key of Object.keys(row)) {
+        obj[key] = row[key] ?? "";
+      }
       return obj;
     });
     return res.status(200).json({ rows });
